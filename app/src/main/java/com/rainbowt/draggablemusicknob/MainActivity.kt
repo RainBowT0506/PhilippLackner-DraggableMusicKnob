@@ -1,9 +1,16 @@
 package com.rainbowt.draggablemusicknob
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,15 +35,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.atan2
@@ -46,41 +58,93 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black)
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .border(1.dp, Color.Green, RoundedCornerShape(10.dp))
-                        .padding(30.dp)
-                ) {
-                    var volume by remember {
-                        mutableStateOf(0f)
-                    }
-
-                    MusicKnob(modifier = Modifier.size(100.dp)) {
-                        volume = it
-                    }
-
-                    Spacer(modifier = Modifier.width(20.dp))
-
-                    val barCount = 20
-                    VolumeBar(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(30.dp),
-                        activeBars = (barCount * volume).roundToInt(),
-                        barCount = barCount
-                    )
-                }
-            }
+            DraggableMusicKnob()
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewDraggableMusicKnob() {
+    DraggableMusicKnob()
+}
+
+@Composable
+private fun DraggableMusicKnob() {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .rainbowBorder(1.dp, 10.dp)
+                .padding(30.dp)
+        ) {
+            var volume by remember {
+                mutableStateOf(0f)
+            }
+
+            MusicKnob(modifier = Modifier.size(100.dp)) {
+                volume = it
+            }
+
+            Spacer(modifier = Modifier.width(20.dp))
+
+            val barCount = 20
+            VolumeBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(30.dp),
+                activeBars = (barCount * volume).roundToInt(),
+                barCount = barCount
+            )
+        }
+    }
+}
+
+// Custom Modifier for Rainbow Border
+@SuppressLint("ModifierFactoryUnreferencedReceiver")
+fun Modifier.rainbowBorder(width: Dp, cornerRadius: Dp): Modifier = composed {
+    val infiniteTransition = rememberInfiniteTransition(label = "RainbowBorderInfiniteTransition")
+    val colorShift by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 3000,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "ColorShiftAnimation"
+    )
+
+    val rainbowColors = listOf(
+        Color.Red,
+        Color.Yellow,
+        Color.Green,
+        Color.Cyan,
+        Color.Blue,
+        Color.Magenta,
+        Color.Red
+    )
+
+    val brush = Brush.linearGradient(
+        colors = rainbowColors,
+        start = Offset(colorShift * 1000f, 0f),
+        end = Offset((colorShift + 1f) * 1000f, 0f),
+        tileMode = TileMode.Repeated
+    )
+
+    border(
+        width = width,
+        brush = brush,
+        shape = RoundedCornerShape(cornerRadius)
+    )
 }
 
 /**
@@ -107,9 +171,13 @@ fun VolumeBar(
 
         Canvas(modifier = modifier) {
             for (i in 0 until barCount) {
+
+                val hue = (i * 360f / barCount) % 360
+                val color = Color.hsv(hue, 1f, if (i <= activeBars) 1f else 0.3f)
+
                 drawRoundRect(
                     // 設置條形的顏色，活躍的條形為綠色，否則為深灰色
-                    color = if (i in 0..activeBars) Color.Green else Color.DarkGray,
+                    color = color,
                     // 設置條形的頂部左側位置
                     topLeft = Offset(i * barWidth * 2f + barWidth / 2f, 0f),
                     // 設置條形的大小
@@ -160,36 +228,30 @@ fun MusicKnob(
         mutableStateOf(0f)
     }
 
-    Image(
-        painter = painterResource(id = R.drawable.ic_music_knob),
-        contentDescription = "Music Knob",
+    val rotationPercentage = calculateRotationPercentage(currentRotation, limitingAngle)
+    val hue = (rotationPercentage * 360) % 360
+    val knobColor = Color.hsv(hue, 1f, 1f)
+    Box(
+        contentAlignment = Alignment.Center,
         modifier = modifier
-            .fillMaxSize()
-            // 獲取圖片在窗口中的位置
+            .size(150.dp) // Adjust the size as needed
+            .background(knobColor, shape = RoundedCornerShape(50.dp)) // Circular background
             .onGloballyPositioned {
-                // 獲取圖片的邊界
                 val windowBounds = it.boundsInWindow()
-                // 計算旋鈕中心的坐標
                 knobCenterX = windowBounds.size.width / 2f
                 knobCenterY = windowBounds.size.height / 2f
             }
-            // 設置指針交互過濾器來處理觸摸事件
             .pointerInteropFilter { event ->
-                // 記錄觸摸點的坐標
                 touchX = event.x
                 touchY = event.y
 
-                // 計算觸摸點與圓心之間的角度
-                val touchAngle =
-                    calculateTouchAngle(knobCenterX, touchX, knobCenterY, touchY)
+                val touchAngle = calculateTouchAngle(knobCenterX, touchX, knobCenterY, touchY)
 
                 when (event.action) {
                     MotionEvent.ACTION_DOWN,
                     MotionEvent.ACTION_MOVE -> {
                         if (isAngleNotWithinLimits(touchAngle, limitingAngle)) {
-                            // 設置旋轉角度
                             currentRotation = calculateCorrectAngle(touchAngle, limitingAngle)
-                            // 計算旋轉百分比
                             val rotationPercentage =
                                 calculateRotationPercentage(currentRotation, limitingAngle)
                             onValueChange(rotationPercentage)
@@ -200,9 +262,15 @@ fun MusicKnob(
                     else -> false
                 }
             }
-            // 根據旋轉角度旋轉圖片
-            .rotate(currentRotation)
-    )
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.ic_music_knob),
+            contentDescription = "Music Knob",
+            modifier = Modifier
+                .size(100.dp)
+                .rotate(currentRotation)
+        )
+    }
 }
 
 /**
