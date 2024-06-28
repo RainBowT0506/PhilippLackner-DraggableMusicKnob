@@ -37,6 +37,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/**
+ * 一個可組合函數，用於創建具有指定數量活躍條形的音量條。
+ *
+ * @param modifier 用於應用於音量條的 [Modifier]。默認為空的 [Modifier]。
+ * @param activeBars 活躍條形（填充綠色）的數量。默認為 0。
+ * @param barCount 音量條中的總條形數量。默認為 10。
+ */
 @Composable
 fun VolumeBar(
     modifier: Modifier = Modifier,
@@ -47,6 +54,7 @@ fun VolumeBar(
         contentAlignment = Alignment.Center,
         modifier = modifier,
     ) {
+        // 計算每個條形的寬度
         val barWidth = remember {
             constraints.maxWidth / (2f * barContent)
         }
@@ -54,9 +62,13 @@ fun VolumeBar(
         Canvas(modifier = modifier) {
             for (i in 0 until barContent) {
                 drawRoundRect(
+                    // 設置條形的顏色，活躍的條形為綠色，否則為深灰色
                     color = if (i in 0..activeBars) Color.Green else Color.DarkGray,
+                    // 設置條形的頂部左側位置
                     topLeft = Offset(i * barWidth * 2f + barWidth / 2f, 0f),
+                    // 設置條形的大小
                     size = Size(barWidth, constraints.maxHeight.toFloat()),
+                    // 設置條形的圓角半徑
                     cornerRadius = CornerRadius(0f)
                 )
             }
