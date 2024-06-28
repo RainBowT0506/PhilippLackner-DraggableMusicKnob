@@ -6,8 +6,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,14 +37,48 @@ import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.atan2
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .border(1.dp, Color.Green, RoundedCornerShape(10.dp))
+                        .padding(30.dp)
+                ) {
+                    var volume by remember {
+                        mutableStateOf(0f)
+                    }
 
+                    MusicKnob(modifier = Modifier.size(100.dp)) {
+                        volume = it
+                    }
+
+                    Spacer(modifier = Modifier.width(20.dp))
+
+                    val barCount = 20
+                    VolumeBar(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(30.dp),
+                        activeBars = (barCount * volume).roundToInt(),
+                        barCount = barCount
+                    )
+                }
+            }
         }
     }
 }
@@ -48,7 +94,7 @@ class MainActivity : ComponentActivity() {
 fun VolumeBar(
     modifier: Modifier = Modifier,
     activeBars: Int = 0,
-    barContent: Int = 10
+    barCount: Int = 10
 ) {
     BoxWithConstraints(
         contentAlignment = Alignment.Center,
@@ -56,11 +102,11 @@ fun VolumeBar(
     ) {
         // 計算每個條形的寬度
         val barWidth = remember {
-            constraints.maxWidth / (2f * barContent)
+            constraints.maxWidth / (2f * barCount)
         }
 
         Canvas(modifier = modifier) {
-            for (i in 0 until barContent) {
+            for (i in 0 until barCount) {
                 drawRoundRect(
                     // 設置條形的顏色，活躍的條形為綠色，否則為深灰色
                     color = if (i in 0..activeBars) Color.Green else Color.DarkGray,
